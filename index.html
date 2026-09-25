@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sistema de Riego</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#0f1115">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --border:#2a2f3a; --text:#e8eaed;
+    --muted:#9aa3b2; --accent:#4f8cff; --ok:#3ecf8e; --err:#ff6b6b; --warn:#f5b043;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--text); padding:20px; max-width:640px; margin:0 auto;
+  }
+  h1{font-size:1.3rem; margin-bottom:2px;}
+  p.sub{color:var(--muted); margin-top:0; font-size:.85rem;}
+  .panel{
+    background:var(--panel); border:1px solid var(--border); border-radius:12px;
+    padding:18px; margin-bottom:16px;
+  }
+  h2{font-size:.95rem; color:var(--muted); margin:0 0 12px 0; text-transform:uppercase; letter-spacing:.04em;}
+
+  /* sensores */
+  .sensors{display:flex; gap:12px;}
+  .sensor{
+    flex:1; background:#0f1115; border:1px solid var(--border); border-radius:10px;
+    padding:14px; text-align:center;
+  }
+  .sensor .label{font-size:.78rem; color:var(--muted);}
+  .sensor .value{font-size:1.7rem; font-weight:700; margin-top:4px;}
+  .sensor .unit{font-size:.85rem; color:var(--muted); font-weight:400;}
+  .updated{font-size:.75rem; color:var(--muted); text-align:right; margin-top:10px;}
+
+  /* estado */
+  .estado{
+    display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:8px;
+    background:#0f1115; border:1px solid var(--border); font-size:.9rem; margin-bottom:14px;
+  }
+  .estado .dot{width:10px; height:10px; border-radius:50%; background:var(--muted); flex-shrink:0;}
+  .estado.on .dot{background:var(--ok);}
+  .estado.off .dot{background:var(--err);}
+  .estado.auto .dot{background:var(--warn);}
+
+  /* botones */
+  .btn{
+    width:100%; padding:14px; border-radius:10px; border:none; font-size:.95rem; font-weight:700;
+    cursor:pointer; margin-bottom:10px; color:#fff; transition:opacity .15s;
+  }
+  .btn:disabled{opacity:.4; cursor:not-allowed;}
+  .btn:last-child{margin-bottom:0;}
+  .btn-on{background:var(--ok); color:#05261a;}
+  .btn-off{background:var(--err);}
+  .btn-auto{background:var(--accent);}
+
+  .status{display:flex; align-items:center; gap:8px; margin-top:14px; font-size:.87rem; color:var(--muted);}
+  .runningdot{width:8px; height:8px; border-radius:50%; background:var(--muted);}
+  .runningdot.active{background:var(--accent); box-shadow:0 0 0 4px rgba(79,140,255,.2);}
+
+  #log{
+    max-height:220px; overflow-y:auto; font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:.78rem; line-height:1.5; margin-top:10px;
+  }
+  .entry{padding:5px 0; border-bottom:1px solid var(--border); display:flex; gap:8px;}
+  .entry:last-child{border-bottom:none;}
+  .t{color:var(--muted); flex-shrink:0;}
+  .v-zero{color:var(--muted);}
+  .v-ok{color:var(--ok); font-weight:600;}
+  .v-err{color:var(--err);}
+</style>
+</head>
+<body>
+  <h1>🌱 Sistema de Riego</h1>
+  <p class="sub">Control remoto y monitoreo vía ThingSpeak (canal 568511)</p>
+
+  <div class="panel">
+    <h2>Sensores</h2>
+    <div class="sensors">
+      <div class="sensor">
+        <div class="label">Temperatura</div>
+        <div class="value" id="tempVal">--<span class="unit">°C</span></div>
+      </div>
+      <div class="sensor">
+        <div class="label">Humedad</div>
+        <div class="value" id="humVal">--<span class="unit">%</span></div>
+      </div>
+    </div>
+    <div class="updated" id="lastUpdate">Cargando…</div>
+  </div>
+
+  <div class="panel">
+    <h2>Control</h2>
+    <div class="estado" id="estadoBox">
+      <span class="dot"></span>
+      <span id="estadoText">Consultando estado actual…</span>
+    </div>
+
+    <button class="btn btn-on" id="btnOn">ACTIVAR RIEGO MANUAL</button>
+    <button class="btn btn-off" id="btnOff">DESACTIVAR RIEGO</button>
+    <button class="btn btn-auto" id="btnAuto">SISTEMA AUTOMÁTICO</button>
+
+    <div class="status">
+      <span class="runningdot" id="runDot"></span>
+      <span id="runText">Listo</span>
+    </div>
+    <div id="log"></div>
+  </div>
+
+<script>
+  const API_KEY = 'EOBOS2OOBGGKWNWD';
+  const CHANNEL_ID = 568511;
+  const URLS = {
+    on:   `https://api.thingspeak.com/update?api_key=${API_KEY}&field7=1`,
+    off:  `https://api.thingspeak.com/update?api_key=${API_KEY}&field7=0`,
+    auto: `https://api.thingspeak.com/update?api_key=${API_KEY}&field7=2`
+  };
+  const READ_INTERVAL_MS = 10000;
+  const RETRY_INTERVAL_MS = 5000;
+
+  const btnOn = document.getElementById('btnOn');
+  const btnOff = document.getElementById('btnOff');
+  const btnAuto = document.getElementById('btnAuto');
+  const allBtns = [btnOn, btnOff, btnAuto];
+  const runDot = document.getElementById('runDot');
+  const runText = document.getElementById('runText');
+  const log = document.getElementById('log');
+  const tempVal = document.getElementById('tempVal');
+  const humVal = document.getElementById('humVal');
+  const lastUpdate = document.getElementById('lastUpdate');
+  const estadoBox = document.getElementById('estadoBox');
+  const estadoText = document.getElementById('estadoText');
+
+  let busy = false;
+  let attempt = 0;
+
+  function addLog(text, cls){
+    const div = document.createElement('div');
+    div.className = 'entry';
+    const time = new Date().toLocaleTimeString();
+    div.innerHTML = `<span class="t">[${time}]</span><span class="${cls}">${text}</span>`;
+    log.prepend(div);
+  }
+
+  function setButtonsDisabled(disabled){
+    allBtns.forEach(b => b.disabled = disabled);
+  }
+
+  async function sendCommand(url, label){
+    if (busy) return;
+    busy = true;
+    attempt = 0;
+    setButtonsDisabled(true);
+    runDot.classList.add('active');
+    runText.textContent = `Enviando: ${label}…`;
+    addLog(`→ ${label}: iniciando envío`, '');
+
+    const tryOnce = async () => {
+      attempt++;
+      try {
+        const res = await fetch(url, { method: 'GET', cache: 'no-store' });
+        const raw = (await res.text()).trim();
+        if (raw === '0') {
+          addLog(`${label} · intento #${attempt}: respuesta 0, reintentando…`, 'v-zero');
+          setTimeout(tryOnce, RETRY_INTERVAL_MS);
+        } else {
+          addLog(`${label} · intento #${attempt}: OK (entry ${raw})`, 'v-ok');
+          finishCommand(label);
+          refreshFeeds();
+        }
+      } catch (err) {
+        addLog(`${label} · intento #${attempt}: error de red (${err.message}), reintentando…`, 'v-err');
+        setTimeout(tryOnce, RETRY_INTERVAL_MS);
+      }
+    };
+    tryOnce();
+  }
+
+  function finishCommand(label){
+    busy = false;
+    setButtonsDisabled(false);
+    runDot.classList.remove('active');
+    runText.textContent = 'Listo';
+  }
+
+  btnOn.addEventListener('click', () => sendCommand(URLS.on, 'ACTIVAR RIEGO MANUAL'));
+  btnOff.addEventListener('click', () => sendCommand(URLS.off, 'DESACTIVAR RIEGO'));
+  btnAuto.addEventListener('click', () => sendCommand(URLS.auto, 'SISTEMA AUTOMÁTICO'));
+
+  function setEstado(value){
+    estadoBox.classList.remove('on','off','auto');
+    if (value === '1'){ estadoBox.classList.add('on'); estadoText.textContent = 'Riego manual ACTIVO'; }
+    else if (value === '0'){ estadoBox.classList.add('off'); estadoText.textContent = 'Riego DESACTIVADO'; }
+    else if (value === '2'){ estadoBox.classList.add('auto'); estadoText.textContent = 'Modo AUTOMÁTICO'; }
+    else { estadoText.textContent = 'Estado desconocido'; }
+  }
+
+  async function refreshFeeds(){
+    try {
+      const [tempRes, humRes, estRes] = await Promise.all([
+        fetch(`https://api.thingspeak.com/channels/${CHANNEL_ID}/fields/1.json?results=1`, {cache:'no-store'}),
+        fetch(`https://api.thingspeak.com/channels/${CHANNEL_ID}/fields/2.json?results=1`, {cache:'no-store'}),
+        fetch(`https://api.thingspeak.com/channels/${CHANNEL_ID}/fields/7.json?results=1`, {cache:'no-store'})
+      ]);
+      const tempData = await tempRes.json();
+      const humData = await humRes.json();
+      const estData = await estRes.json();
+
+      const tFeed = tempData.feeds && tempData.feeds[0];
+      const hFeed = humData.feeds && humData.feeds[0];
+      const eFeed = estData.feeds && estData.feeds[0];
+
+      tempVal.innerHTML = (tFeed && tFeed.field1 != null) ? `${parseFloat(tFeed.field1).toFixed(1)}<span class="unit">°C</span>` : '--<span class="unit">°C</span>';
+      humVal.innerHTML = (hFeed && hFeed.field2 != null) ? `${parseFloat(hFeed.field2).toFixed(1)}<span class="unit">%</span>` : '--<span class="unit">%</span>';
+
+      if (eFeed && eFeed.field7 != null) setEstado(String(eFeed.field7).trim());
+
+      lastUpdate.textContent = 'Última lectura: ' + new Date().toLocaleTimeString();
+    } catch (err) {
+      lastUpdate.textContent = 'Error al leer sensores: ' + err.message;
+    }
+  }
+
+  refreshFeeds();
+  setInterval(refreshFeeds, READ_INTERVAL_MS);
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('service-worker.js').catch(() => {});
+    });
+  }
+</script>
+</body>
+</html>
