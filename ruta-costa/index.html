@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0f1720">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<title>Ruta a la Costa</title>
+<style>
+:root{--bg:#0f1720;--panel:#17212c;--panel2:#1f2b38;--line:#2c3a4a;--tx:#e8eef4;--mut:#93a4b5;--acc:#3fa7ff;--ok:#2fbf71;--warn:#ffb020;--bad:#ff4d4f;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font:15px/1.35 system-ui,-apple-system,Roboto,"Segoe UI",sans-serif;overflow:hidden}
+button{font:inherit;color:inherit;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer}
+button.pri{background:var(--acc);border-color:var(--acc);color:#04121f;font-weight:700}
+button:disabled{opacity:.5}
+#app{display:flex;flex-direction:column;height:100%}
+header{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--panel);border-bottom:1px solid var(--line)}
+header h1{font-size:16px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#net{font-size:12px;padding:3px 8px;border-radius:20px;background:var(--panel2);color:var(--mut)}
+#net.on{color:var(--ok)}
+.chip{font-size:12px;padding:3px 8px;border-radius:20px;background:var(--panel2);color:var(--mut);cursor:pointer}.chip.ok{color:var(--ok)}.chip.bad{color:#111;background:var(--warn)}
+#gpsBox{position:absolute;inset:0;background:rgba(5,10,15,.75);display:none;align-items:center;justify-content:center;z-index:20;padding:16px}#gpsBox.on{display:flex}#gpsBox .card{max-width:420px;width:100%}#gpsBox ol{padding-left:20px;margin:6px 0}#gpsBox li{margin:4px 0}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{border:0;border-radius:0;padding:6px 10px;background:transparent;color:var(--mut)}
+.seg button.on{background:var(--acc);color:#04121f;font-weight:700}
+main{flex:1;position:relative;overflow:hidden}
+.view{position:absolute;inset:0;overflow:auto;display:none;padding:10px}
+.view.on{display:block}
+#v-mapa{padding:0;overflow:hidden}
+#map{position:absolute;left:0;top:0;width:100%;height:100%;display:block;touch-action:none;background:#dfe5ea}
+nav{display:flex;background:var(--panel);border-top:1px solid var(--line)}
+nav button{flex:1;border:0;border-radius:0;background:transparent;padding:10px 2px 12px;font-size:12px;color:var(--mut)}
+nav button b{display:block;font-size:18px;line-height:1.1}
+nav button.on{color:var(--acc)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+.card h2{font-size:15px;margin:0 0 8px}
+.mut{color:var(--mut)}
+.small{font-size:12px}
+.row{display:flex;gap:8px;align-items:center}
+.grow{flex:1}
+.sign{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:50%;background:#fff;color:#111;border:5px solid #d11;font-weight:800;font-size:14px;flex:none}
+.sign.big{width:96px;height:96px;border-width:10px;font-size:38px}
+.pill{display:inline-block;font-size:11px;padding:2px 7px;border-radius:20px;background:var(--panel2);border:1px solid var(--line);color:var(--mut);margin:2px 3px 0 0}
+.pill.r{color:#fff;background:#b3261e;border-color:#b3261e}
+.pill.m{color:#111;background:var(--warn);border-color:var(--warn)}
+.pill.c{color:#111;background:#ffd666;border-color:#ffd666}
+.pill.t{color:#fff;background:#5b6cff;border-color:#5b6cff}
+.pill.o{color:#111;background:#ff8a3d;border-color:#ff8a3d}
+.tira-row{display:flex;gap:10px;padding:8px 6px;border-bottom:1px solid var(--line);align-items:flex-start}
+.tira-row.cur{background:#14324d;border-radius:8px}
+.tira-km{width:92px;flex:none;font-variant-numeric:tabular-nums}
+.bar{height:8px;background:var(--panel2);border-radius:6px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--acc)}
+#drive{position:absolute;left:8px;right:8px;top:8px;background:rgba(15,23,32,.93);border:1px solid var(--line);border-radius:14px;padding:10px;display:none;z-index:5}
+#drive.on{display:block}
+#alert{position:absolute;left:8px;right:8px;bottom:8px;border-radius:14px;padding:12px;display:none;z-index:6;font-weight:700;font-size:17px}
+#alert.on{display:block}
+#alert.w{background:var(--warn);color:#111}
+#alert.b{background:var(--bad);color:#fff}
+.mapbtns{position:absolute;right:8px;bottom:96px;display:flex;flex-direction:column;gap:6px;z-index:4}
+.mapbtns button{width:46px;height:46px;padding:0;font-size:20px;background:rgba(23,33,44,.92)}
+#info{position:absolute;left:8px;right:62px;bottom:8px;background:rgba(23,33,44,.96);border:1px solid var(--line);border-radius:12px;padding:10px;display:none;z-index:4}
+#info.on{display:block}
+#attr{position:absolute;left:4px;bottom:2px;font-size:10px;color:#333;background:rgba(255,255,255,.7);padding:0 4px;border-radius:4px;z-index:3}
+.legend span{margin-right:10px;white-space:nowrap}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:middle}
+table{border-collapse:collapse;width:100%}
+td,th{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left;font-size:13px}
+.desvio{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.sw{width:14px;height:40px;border-radius:4px;flex:none}
+a{color:var(--acc)}
+input[type=text]{background:var(--panel2);border:1px solid var(--line);color:var(--tx);border-radius:8px;padding:8px;font:inherit;width:100%}
+label.chk{display:flex;gap:8px;align-items:center;margin:6px 0}
+#empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:30px;color:#334;z-index:2;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="app">
+<header>
+  <h1>🚗 Ruta a la Costa</h1>
+  <div class="seg" id="dirSeg"><button data-d="A" class="on">Ida</button><button data-d="D">Vuelta</button></div>
+  <span id="gpsChip" class="chip" onclick="gpsHelp()">GPS</span><span id="net">offline</span>
+</header>
+<main>
+  <section class="view on" id="v-mapa">
+    <canvas id="map"></canvas>
+    <div id="empty"></div>
+    <div id="drive"></div>
+    <div id="alert"></div>
+    <div id="info"></div>
+    <div id="gpsBox"></div>
+    <div class="mapbtns">
+      <button id="bGps" title="Seguir mi posición">◎</button>
+      <button id="bZin">+</button>
+      <button id="bZout">−</button>
+      <button id="bFit" title="Ver todo">⤢</button>
+    </div>
+    <div id="attr">Mapa © Esri, HERE, Garmin, © OpenStreetMap</div>
+  </section>
+  <section class="view" id="v-tira"></section>
+  <section class="view" id="v-desvios"></section>
+  <section class="view" id="v-datos"></section>
+</main>
+<nav>
+  <button data-v="mapa" class="on"><b>🗺️</b>Mapa</button>
+  <button data-v="tira"><b>📏</b>Tramos</button>
+  <button data-v="desvios"><b>🔀</b>Desvíos</button>
+  <button data-v="datos"><b>⬇️</b>Datos</button>
+</nav>
+</div>
+
+<script>
+"use strict";
+/* =====================================================================
+   DATOS EMBEBIDOS (funcionan sin conexión desde el primer uso)
+   ===================================================================== */
+const DATA = {
+  version: "2026-11-06",
+  // Registro oficial InfraccionesBA (equiposDeConstatacion), Ruta Provincial 2,
+  // consultado 06/11/2026. [km, vel. máx., tiempo de referencia (min) desde la progresiva anterior]
+  // Cada fila = a partir de ese km (en el sentido de circulación) rige esa máxima.
+  speedA: [[41.1,100,null],[43.5,80,1.5],[46.6,100,2.3],[47.4,120,0.5],[51.4,100,2.0],[51.65,80,0.2],[55.15,120,2.6],[57.4,100,1.1],[61.9,120,2.7],[89.21,100,13.7],[89.5,80,0.2],[89.85,60,0.3],[90.4,100,0.6],[92.3,120,1.1],[102.9,100,5.3],[103.2,80,0.2],[103.6,120,0.3],[112.45,100,4.4],[112.75,80,0.2],[113.9,60,0.9],[115.2,80,1.3],[116.7,100,1.1],[119.8,80,1.9],[123.5,100,2.8],[125.0,120,0.9],[155.0,100,15.0],[155.25,80,0.2],[155.5,60,0.2],[157.8,120,2.3],[177.4,100,9.8],[179.25,80,1.1],[180.1,100,0.6],[181.2,80,0.7],[183.65,120,1.8],[194.7,100,5.5],[195.1,80,0.2],[196.85,120,1.3],[201.55,100,2.4],[204.2,120,1.6],[208.9,100,2.4],[210.0,80,0.7],[210.8,120,0.6],[247.8,100,18.5],[248.15,80,0.2],[250.6,60,1.8],[250.9,30,0.3],[251.3,120,0.8],[260.6,100,4.7],[261.4,120,0.5],[272.25,100,5.4],[272.5,80,0.2],[272.75,60,0.2],[273.4,80,0.6],[276.2,120,2.1],[299.15,100,11.5],[299.5,80,0.2],[300.8,120,1.0],[319.95,100,9.6],[321.95,80,1.2],[323.4,100,1.1],[325.15,120,1.1],[340.2,100,7.5],[341.7,80,0.9],[343.8,100,1.6],[344.9,120,0.7],[365.4,100,10.3],[365.9,80,0.3],[367.9,120,1.5],[383.5,100,7.8],[384.1,120,0.4],[385.6,100,0.8],[386.6,120,0.6],[390.9,100,2.1],[392.8,80,1.1],[396.7,100,2.9],[397.9,80,0.7],[398.2,60,0.2],[398.7,80,0.5],[400.3,60,1.2],[400.7,60,0.4]],
+  speedD: [[403.7,60],[400.1,80],[398.7,60],[398.2,100],[396.8,80],[392.8,100],[389.1,120],[386.85,100],[385.5,120],[384.1,100],[383.6,120],[368.1,100],[366.2,80],[365.8,120],[344.9,100],[344.35,80],[342.3,120],[323.6,100],[323.35,80],[321.8,120],[301.2,100],[300.95,80],[299.5,120],[276.35,100],[276.1,80],[273.4,60],[272.95,120],[251.9,100],[251.65,80],[251.4,60],[251.15,30],[250.9,100],[248.2,120],[210.85,100],[208.8,120],[204.2,100],[202.3,120],[196.6,100],[196.35,80],[195.2,120],[183.45,100],[183.2,80],[181.1,100],[180.05,80],[179.35,100],[178.0,80],[177.35,120],[157.8,100],[157.55,80],[157.3,60],[155.3,120],[141.6,100],[140.9,120],[123.8,100],[123.2,80],[121.2,100],[119.4,80],[118.6,100],[114.95,80],[113.95,100],[112.6,120],[104.1,100],[103.85,80],[102.9,120],[99.35,100],[98.4,120],[93.85,100],[93.6,80],[91.7,100],[90.6,80],[90.35,60],[89.6,120],[83.35,100],[82.4,120],[74.8,100],[74.55,80],[73.8,120],[62.4,100],[62.1,80],[61.3,120],[60.4,100],[57.75,80],[57.2,120],[55.6,100],[55.35,80],[51.5,120],[46.5,100],[45.85,80],[44.55,100]],
+  // Radares fijos reportados (mapa oficial provincial difundido por medios; km y sentido).
+  // s: "A" = hacia la Costa (ascendente), "D" = hacia Buenos Aires (descendente), "AD" = ambos
+  fixed: [
+    {km:33.8,s:"AD",loc:"Berazategui",src:"Mapa provincial (Lomas Noticias 2023)"},
+    {km:41.9,s:"A",loc:"Berazategui",src:"Mapa provincial (Lomas Noticias 2023)"},
+    {km:45.0,s:"D",loc:"La Plata",src:"Mapa provincial (Lomas Noticias 2023)"},
+    {km:52.0,s:"AD",loc:"La Plata",src:"Mapa provincial (Lomas Noticias 2023)"},
+    {km:103.5,s:"D",loc:"Chascomús (Gándara)",src:"Mapa provincial (Lomas Noticias 2023)"},
+    {km:113.5,s:"D",loc:"Chascomús",src:"Mapa provincial (Lomas Noticias 2023)"},
+    {km:114.0,s:"A",loc:"Chascomús",src:"Mapa provincial (Lomas Noticias 2023)"},
+    {km:116.0,s:"A",loc:"Chascomús",src:"Mapa provincial (Lomas Noticias 2023)"},
+    {km:117.5,s:"D",loc:"Chascomús",src:"Mapa provincial (Lomas Noticias 2023)"},
+    {km:152.7,s:"A",loc:"Lezama",src:"Mapa provincial (Lomas Noticias 2023)"},
+    {km:156.2,s:"AD",loc:"Lezama (travesía urbana)",src:"Mapa provincial (Lomas Noticias 2023)"},
+    {km:180.0,s:"AD",loc:"Castelli",src:"Mapa provincial (Lomas Noticias 2023)"},
+    {km:195.9,s:"AD",loc:"Sevigné / Dolores",src:"Mapa provincial (Lomas Noticias 2023)"},
+    {km:203.0,s:"AD",loc:"Dolores",src:"Mapa provincial (Lomas Noticias 2023)"},
+    {km:249.0,s:"D",loc:"General Guido",src:"Subsecretaría Seguridad Vial vía La Nación (dic 2024)"},
+    {km:323.7,s:"AD",loc:"General Pirán",src:"Mapa provincial (Lomas Noticias 2023)"},
+    {km:340.9,s:"AD",loc:"Coronel Vidal",src:"Mapa provincial (Lomas Noticias 2023)"},
+    {km:395.9,s:"D",loc:"Camet (Mar del Plata)",src:"Mapa provincial (Lomas Noticias 2023)"},
+    {km:396.1,s:"A",loc:"Camet (Mar del Plata)",src:"Mapa provincial (Lomas Noticias 2023)"},
+    {km:398.5,s:"AD",loc:"Mar del Plata (municipal)",src:"Autorización provincial feb 2026 (Infozona)"}
+  ],
+  mobile: [
+    {from:384,to:399,s:"AD",txt:"Radares móviles municipales autorizados (Gral. Pueyrredón), 60–80 km/h",src:"Autorización provincial feb 2026"},
+    {from:41,to:400,s:"AD",txt:"Controles móviles ANSV/Provincia rotativos, más frecuentes en fines de semana largos",src:"ANSV / Provincia",general:true}
+  ],
+  caution: [
+    {km:95,txt:"Ingreso a campo en zona de curva"},
+    {km:103,txt:"Planta Villa del Sur: entrada y salida de camiones"},
+    {km:110,txt:"Zona Atalaya: ingresos y egresos peligrosos"},
+    {km:112,txt:"Zona urbana Chascomús"},
+    {km:123,txt:"Estación de servicio: salida directa al carril rápido"},
+    {km:124,txt:"Acceso a la Laguna de Chascomús en curva"},
+    {km:155.5,txt:"Travesía urbana de Lezama (60 km/h)"},
+    {km:250.9,txt:"Cruce ferroviario General Guido (30 km/h)"}
+  ],
+  tolls: [
+    {km:90.1,name:"Peaje Samborombón"},
+    {km:273.1,name:"Peaje Maipú (km aprox.)"}
+  ],
+  // Anclas para convertir km oficial ⇄ posición en el mapa (coordenadas aproximadas,
+  // se reemplazan por las de OpenStreetMap al actualizar).
+  anchors: [
+    {name:"Chascomús",km:117,lat:-35.5787,lon:-58.0138},
+    {name:"Lezama",km:156.5,lat:-35.8726,lon:-57.8969},
+    {name:"Castelli",km:180,lat:-36.0914,lon:-57.8073},
+    {name:"Dolores",km:202,lat:-36.3154,lon:-57.6755},
+    {name:"General Guido",km:251,lat:-36.6417,lon:-57.7921},
+    {name:"General Pirán",km:322.5,lat:-37.276,lon:-57.7742},
+    {name:"Coronel Vidal",km:342.7,lat:-37.4465,lon:-57.7293},
+    {name:"Vivoratá",km:366.5,lat:-37.6624,lon:-57.6665},
+    {name:"Peaje Samborombón",km:90.1,lat:-35.3075,lon:-58.0536}
+  ],
+  otherRoutes: [
+    {ruta:"Ruta 11",items:"km 142,7 · km 290,2 (asc.) · km 294,4 · km 326,8 · km 329,8 (desc.) · km 410,5 (asc.) · General Lavalle km 290–295 hasta 40 km/h"},
+    {ruta:"Ruta 63",items:"km 0,5 · km 8,8 (asc.) · km 13,13 (desc.)"},
+    {ruta:"Ruta 36",items:"km 96,5"},
+    {ruta:"Ruta 74",items:"6 equipos informados (km 18,2 y km 23 según un listado; a confirmar)"},
+    {ruta:"Ruta 11 / 63 (Gral. Conesa) y Ruta 2 km 82",items:"Dispositivos nuevos informados por la prensa: control de peso y dimensiones de camiones; no está confirmado que hagan fotomultas por velocidad a autos"}
+  ]
+};
+
+const PLACES = {
+  origen: {name:"La Plata (Altos de San Lorenzo)",lat:-34.951,lon:-57.940},
+  destino:{name:"Mar del Plata",lat:-38.0023,lon:-57.5575}
+};
+
+// Desvíos: puntos de paso (lat,lon). Se calculan con OSRM al actualizar.
+const DESVIOS = [
+  {id:"principal",name:"Autovía 2 (principal)",color:"#1e7bff",via:[],desc:"La más directa. Todos los radares oficiales de Ruta 2."},
+  {id:"r63",name:"Ruta 2 → 63 → 11 (por Gral. Conesa)",color:"#e67e22",via:[[-36.335,-57.655],[-36.52,-57.32]],desc:"Deja la 2 en Dolores. Útil si hay corte entre Dolores y Mar del Plata."},
+  {id:"r74",name:"Ruta 2 → 74 → 11 (por Madariaga)",color:"#16a085",via:[[-36.87,-57.86],[-37.00,-57.14]],desc:"Deja la 2 en Maipú. Esquiva el tramo Maipú–Mar del Plata."},
+  {id:"r11",name:"Ruta 11 costera (Magdalena – Conesa)",color:"#c0392b",via:[[-35.08,-57.52],[-35.53,-57.33],[-36.52,-57.32]],desc:"Evita toda la Ruta 2. Más larga, con travesías urbanas."},
+  {id:"interior",name:"Interior (Ranchos – Ayacucho – Balcarce)",color:"#7f8c8d",via:[[-35.52,-58.32],[-35.77,-58.50],[-37.15,-58.49],[-37.85,-58.25]],desc:"Evita la costa y la 2. Bastante más larga; solo para emergencias."}
+];
+
+// Mosaicos sin clave de API: Esri World Street Map (principal) y OpenStreetMap (respaldo)
+const TILE_URL = (z,x,y)=>`https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/${z}/${y}/${x}`;
+const TILE_URL_FALLBACK = (z,x,y)=>`https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
+const TILE_VER = "esri1";
+
+/* =====================================================================
+   ALMACENAMIENTO (IndexedDB con respaldo en memoria/localStorage)
+   ===================================================================== */
+const Store = (()=>{
+  let db=null, mem={kv:new Map(),tiles:new Map()};
+  const open = ()=>new Promise(res=>{
+    try{
+      const r=indexedDB.open("rutacosta",1);
+      r.onupgradeneeded=()=>{const d=r.result;d.createObjectStore("kv");d.createObjectStore("tiles");};
+      r.onsuccess=()=>{db=r.result;res(true)};
+      r.onerror=()=>res(false);
+    }catch(e){res(false)}
+  });
+  const tx=(st,mode,fn)=>new Promise((res,rej)=>{
+    try{const t=db.transaction(st,mode);const s=t.objectStore(st);const r=fn(s);t.oncomplete=()=>res(r&&r.result);t.onerror=()=>rej(t.error);}catch(e){rej(e)}
+  });
+  return {
+    open,
+    async get(k){ if(!db){ if(mem.kv.has(k))return mem.kv.get(k); try{const v=localStorage.getItem("rc_"+k);return v?JSON.parse(v):undefined}catch(e){return undefined} } return tx("kv","readonly",s=>s.get(k)); },
+    async set(k,v){ if(!db){ mem.kv.set(k,v); try{localStorage.setItem("rc_"+k,JSON.stringify(v))}catch(e){} return;} return tx("kv","readwrite",s=>s.put(v,k)); },
+    async tile(k){ k=TILE_VER+"/"+k; if(!db)return mem.tiles.get(k); return tx("tiles","readonly",s=>s.get(k)); },
+    async putTile(k,b){ k=TILE_VER+"/"+k; if(!db){mem.tiles.set(k,b);return} return tx("tiles","readwrite",s=>s.put(b,k)); },
+    async tileKeys(){ const p=TILE_VER+"/"; let keys; if(!db)keys=[...mem.tiles.keys()]; else keys=await tx("tiles","readonly",s=>s.getAllKeys()); return new Set((keys||[]).filter(k=>String(k).startsWith(p)).map(k=>String(k).slice(p.length))); },
+    async clearTiles(){ if(!db){mem.tiles.clear();return} return tx("tiles","readwrite",s=>s.clear()); },
+    get persistent(){return !!db}
+  };
+})();
+
+/* =====================================================================
+   GEOMETRÍA
+   ===================================================================== */
+const R_E=6371008.8, rad=Math.PI/180;
+function hav(a,b){const dLa=(b[0]-a[0])*rad,dLo=(b[1]-a[1])*rad;const s=Math.sin(dLa/2)**2+Math.cos(a[0]*rad)*Math.cos(b[0]*rad)*Math.sin(dLo/2)**2;return 2*R_E*Math.asin(Math.sqrt(s));}
+function cumul(pts){const c=[0];for(let i=1;i<pts.length;i++)c.push(c[i-1]+hav(pts[i-1],pts[i]));return c;}
+// proyecta p sobre polilínea: devuelve {along, dist, i}
+function project(p,pts,cum,hint){
+  let best={dist:Infinity,along:0,i:0};
+  const kx=Math.cos(p[0]*rad)*111320, ky=110540;
+  let i0=0,i1=pts.length-1;
+  if(hint!=null){i0=Math.max(0,hint-400);i1=Math.min(pts.length-1,hint+400);}
+  const scan=(a,b)=>{for(let i=a;i<b;i++){
+    const A=pts[i],B=pts[i+1];
+    const ax=(A[1]-p[1])*kx, ay=(A[0]-p[0])*ky, bx=(B[1]-p[1])*kx, by=(B[0]-p[0])*ky;
+    const dx=bx-ax, dy=by-ay, L=dx*dx+dy*dy;
+    let t=L?-(ax*dx+ay*dy)/L:0; t=Math.max(0,Math.min(1,t));
+    const x=ax+t*dx,y=ay+t*dy,d=Math.hypot(x,y);
+    if(d<best.dist)best={dist:d,along:cum[i]+t*(cum[i+1]-cum[i]),i};
+  }};
+  scan(i0,i1);
+  if(hint!=null&&best.dist>500){best={dist:Infinity,along:0,i:0};scan(0,pts.length-1);}
+  return best;
+}
+function pointAt(along,pts,cum){
+  if(along<=0)return pts[0]; const n=cum.length-1; if(along>=cum[n])return pts[n];
+  let lo=0,hi=n; while(hi-lo>1){const m=(lo+hi)>>1; if(cum[m]<=along)lo=m; else hi=m;}
+  const t=(along-cum[lo])/((cum[hi]-cum[lo])||1);
+  return [pts[lo][0]+t*(pts[hi][0]-pts[lo][0]), pts[lo][1]+t*(pts[hi][1]-pts[lo][1])];
+}
+function decodePolyline(str,prec=5){let i=0,lat=0,lon=0,out=[],f=10**prec;while(i<str.length){let b,s=0,r=0;do{b=str.charCodeAt(i++)-63;r|=(b&31)<<s;s+=5}while(b>=32);lat+=r&1?~(r>>1):r>>1;s=0;r=0;do{b=str.charCodeAt(i++)-63;r|=(b&31)<<s;s+=5}while(b>=32);lon+=r&1?~(r>>1):r>>1;out.push([lat/f,lon/f]);}return out;}
+
+/* =====================================================================
+   VELOCIDADES Y KM
+   ===================================================================== */
+function limitAt(km,dir){
+  if(km==null)return null;
+  const t=dir==="A"?DATA.speedA:DATA.speedD; let v=null;
+  if(dir==="A"){for(const r of t){if(r[0]<=km)v=r[1];else break;}}
+  else{for(const r of t){if(r[0]>=km)v=r[1];else break;}}
+  return v;
+}
+function nextChange(km,dir){
+  const t=dir==="A"?DATA.speedA:DATA.speedD;
+  for(const r of t){ if(dir==="A"?r[0]>km:r[0]<km) return {km:r[0],v:r[1]}; }
+  return null;
+}
+// Calibración km oficial ⇄ distancia sobre la ruta principal (piecewise lineal)
+let CAL=null;
+function calibrate(route,anchors){
+  const pts=[];
+  for(const a of anchors){
+    const pr=project([a.lat,a.lon],route.pts,route.cum);
+    if(pr.dist<6000)pts.push({km:a.km,along:pr.along,name:a.name,dist:pr.dist});
+  }
+  pts.sort((a,b)=>a.km-b.km);
+  const ok=[];
+  for(const p of pts){ if(!ok.length||(p.along>ok[ok.length-1].along+1000)) ok.push(p); }
+  if(ok.length<3)return null;
+  return {pts:ok};
+}
+function kmFromAlong(al){
+  if(!CAL)return null; const p=CAL.pts,n=p.length;
+  if(al<=p[0].along)return p[0].km-(p[0].along-al)/1000;
+  if(al>=p[n-1].along)return p[n-1].km+(al-p[n-1].along)/1000;
+  for(let i=0;i<n-1;i++)if(al<=p[i+1].along){const t=(al-p[i].along)/(p[i+1].along-p[i].along);return p[i].km+t*(p[i+1].km-p[i].km);}
+}
+function alongFromKm(km){
+  if(!CAL)return null; const p=CAL.pts,n=p.length;
+  if(km<=p[0].km)return p[0].along-(p[0].km-km)*1000;
+  if(km>=p[n-1].km)return p[n-1].along+(km-p[n-1].km)*1000;
+  for(let i=0;i<n-1;i++)if(km<=p[i+1].km){const t=(km-p[i].km)/(p[i+1].km-p[i].km);return p[i].along+t*(p[i+1].along-p[i].along);}
+}
+const fmtKm=k=>k==null?"–":k.toFixed(1).replace(".",",");
+const fmtD=m=>m<1000?Math.round(m/10)*10+" m":(m/1000).toFixed(m<10000?1:0).replace(".",",")+" km";
+
+/* =====================================================================
+   ESTADO
+   ===================================================================== */
+const S = {
+  dir:"A", routes:{}, active:"principal", osm:null, weather:null, updatedAt:null,
+  pois:[], gps:null, follow:false, watchId:null, alerted:new Set(), online:navigator.onLine
+};
+
+function buildPois(){
+  // POIs con coordenadas: radares oficiales ubicados sobre la ruta principal, peajes, precauciones, OSM
+  const out=[]; const main=S.routes.principal;
+  if(main&&CAL){
+    for(const r of DATA.fixed){const al=alongFromKm(r.km); if(al<0||al>main.cum[main.cum.length-1])continue; const p=pointAt(al,main.pts,main.cum);
+      out.push({type:"radar",lat:p[0],lon:p[1],km:r.km,s:r.s,title:"Radar fijo · "+r.loc,src:r.src,calc:true});}
+    for(const t of DATA.tolls){const al=alongFromKm(t.km); if(al<0||al>main.cum[main.cum.length-1])continue; const p=pointAt(al,main.pts,main.cum);
+      if(!(S.osm&&S.osm.tolls.some(o=>hav([o.lat,o.lon],p)<3000))) out.push({type:"toll",lat:p[0],lon:p[1],km:t.km,s:"AD",title:t.name,calc:true});}
+    for(const c of DATA.caution){const al=alongFromKm(c.km); if(al<0||al>main.cum[main.cum.length-1])continue; const p=pointAt(al,main.pts,main.cum);
+      out.push({type:"caution",lat:p[0],lon:p[1],km:c.km,s:"AD",title:"Precaución · "+c.txt,calc:true});}
+    for(const m of DATA.mobile){ if(m.general)continue; const a=alongFromKm(m.from),b=alongFromKm(m.to); const p=pointAt((a+b)/2,main.pts,main.cum);
+      out.push({type:"mobile",lat:p[0],lon:p[1],km:(m.from+m.to)/2,from:m.from,to:m.to,s:m.s,title:"Zona de control móvil · km "+m.from+"–"+m.to,src:m.src,txt:m.txt,calc:true});}
+  }
+  if(S.osm){
+    for(const c of S.osm.cams){
+      // evita duplicar un radar oficial a menos de 700 m
+      if(out.some(o=>o.type==="radar"&&hav([o.lat,o.lon],[c.lat,c.lon])<700)){c.dup=true;}
+      out.push({type:"osmcam",lat:c.lat,lon:c.lon,title:(c.avg?"Control de velocidad promedio":"Cámara/radar")+" (OpenStreetMap)",max:c.max,s:"AD",dup:c.dup,src:"OpenStreetMap (comunidad)"});
+    }
+    for(const t of S.osm.tolls) out.push({type:"toll",lat:t.lat,lon:t.lon,title:t.name||"Peaje",s:"AD",src:"OpenStreetMap"});
+    for(const f of S.osm.fuel) out.push({type:"fuel",lat:f.lat,lon:f.lon,title:(f.brand||f.name||"Estación de servicio"),s:"AD",src:"OpenStreetMap"});
+  }
+  if(main){ for(const p of out){ const pr=project([p.lat,p.lon],main.pts,main.cum); p.mainDist=pr.dist; p.mainAlong=pr.along; if(p.km==null&&pr.dist<150&&CAL)p.km=kmFromAlong(pr.along);} }
+  S.pois=out;
+}
+
+/* =====================================================================
+   ACTUALIZACIÓN ONLINE
+   ===================================================================== */
+async function fetchJSON(url,opt={},ms=45000){
+  const c=new AbortController(); const t=setTimeout(()=>c.abort(),ms);
+  try{const r=await fetch(url,{...opt,signal:c.signal}); if(!r.ok)throw new Error("HTTP "+r.status); return await r.json();}
+  finally{clearTimeout(t)}
+}
+async function osrm(points,exclude,alternatives){
+  const coords=points.map(p=>p[1].toFixed(5)+","+p[0].toFixed(5)).join(";");
+  let url=`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=polyline&steps=false`;
+  if(exclude)url+="&exclude="+exclude;
+  if(alternatives)url+="&alternatives=3";
+  const j=await fetchJSON(url);
+  if(j.code!=="Ok")throw new Error(j.message||j.code);
+  return j.routes.map(r=>{const pts=decodePolyline(r.geometry);return {pts,cum:cumul(pts),dist:r.distance,dur:r.duration};});
+}
+function thin(pts,minM=25){const o=[pts[0]];for(let i=1;i<pts.length;i++){if(hav(o[o.length-1],pts[i])>=minM||i===pts.length-1)o.push(pts[i]);}return o;}
+
+async function updateAll(withTiles){
+  const log=msg=>{const el=document.getElementById("updLog"); if(el){el.textContent=msg;}};
+  const o=[PLACES.origen.lat,PLACES.origen.lon], d=[PLACES.destino.lat,PLACES.destino.lon];
+  const routes={}; const errors=[];
+  log("Calculando ruta principal y alternativas…");
+  try{
+    const rs=await osrm([o,d],null,true);
+    routes.principal={...rs[0],name:DESVIOS[0].name,color:DESVIOS[0].color};
+    rs.slice(1).forEach((r,i)=>{routes["alt"+(i+1)]={...r,name:"Alternativa automática "+(i+1),color:["#00a8a8","#b8860b","#d35400"][i],desc:"Sugerida por el ruteador (OSRM)."};});
+  }catch(e){errors.push("Ruta principal: "+e.message);}
+  for(const dv of DESVIOS.slice(1)){
+    log("Calculando desvío: "+dv.name+"…");
+    try{const [r]=await osrm([o,...dv.via,d],dv.exclude,false);routes[dv.id]={...r,name:dv.name,color:dv.color,desc:dv.desc};}
+    catch(e){errors.push(dv.name+": "+e.message);}
+    await new Promise(r=>setTimeout(r,700));
+  }
+  if(!routes.principal){ log("No se pudo calcular la ruta. "+errors.join(" · ")); return false; }
+  for(const k in routes){ routes[k].pts=thin(routes[k].pts); routes[k].cum=cumul(routes[k].pts); }
+
+  // OpenStreetMap: cámaras, controles, peajes, estaciones, localidades (anclas)
+  log("Buscando radares, peajes y estaciones en OpenStreetMap…");
+  let osm=S.osm;
+  try{
+    let la1=90,la2=-90,lo1=180,lo2=-180;
+    for(const k in routes)for(const p of routes[k].pts){la1=Math.min(la1,p[0]);la2=Math.max(la2,p[0]);lo1=Math.min(lo1,p[1]);lo2=Math.max(lo2,p[1]);}
+    const bb=`${(la1-.05).toFixed(3)},${(lo1-.05).toFixed(3)},${(la2+.05).toFixed(3)},${(lo2+.05).toFixed(3)}`;
+    const names=DATA.anchors.map(a=>a.name).join("|");
+    const q=`[out:json][timeout:90];(node["highway"="speed_camera"](${bb});relation["type"="enforcement"](${bb});node["barrier"="toll_booth"](${bb});way["barrier"="toll_booth"](${bb});node["amenity"="fuel"](${bb});way["amenity"="fuel"](${bb});node["place"~"city|town|village"]["name"~"^(${names})$"](${bb}););out center tags;`;
+    let j=null;
+    for(const ep of ["https://overpass-api.de/api/interpreter","https://overpass.kumi.systems/api/interpreter"]){
+      try{j=await fetchJSON(ep,{method:"POST",body:"data="+encodeURIComponent(q),headers:{"Content-Type":"application/x-www-form-urlencoded"}},100000);break;}catch(e){errors.push("Overpass ("+ep.split("/")[2]+"): "+e.message);}
+    }
+    if(j){
+      const near=(lat,lon,m)=>{for(const k in routes){const r=routes[k];if(project([lat,lon],r.pts,r.cum).dist<m)return true;}return false;};
+      osm={cams:[],tolls:[],fuel:[],places:[],at:new Date().toISOString()};
+      for(const e of j.elements){
+        const lat=e.lat??e.center?.lat, lon=e.lon??e.center?.lon, t=e.tags||{}; if(lat==null)continue;
+        if(t.highway==="speed_camera"||t.type==="enforcement"){ if(t.type==="enforcement"&&t.enforcement&&!/maxspeed|average_speed|traffic_signals/.test(t.enforcement))continue;
+          if(near(lat,lon,250))osm.cams.push({lat,lon,max:t.maxspeed||null,avg:t.enforcement==="average_speed"});}
+        else if(t.barrier==="toll_booth"){ if(near(lat,lon,300))osm.tolls.push({lat,lon,name:t.name}); }
+        else if(t.amenity==="fuel"){ if(near(lat,lon,250))osm.fuel.push({lat,lon,name:t.name,brand:t.brand}); }
+        else if(t.place){ osm.places.push({name:t.name,lat,lon}); }
+      }
+      // peajes: unir cabinas cercanas
+      const tl=[];for(const t of osm.tolls){if(!tl.some(x=>hav([x.lat,x.lon],[t.lat,t.lon])<800))tl.push(t);}osm.tolls=tl;
+    }
+  }catch(e){errors.push("OSM: "+e.message);}
+
+  // Pronóstico (Open-Meteo)
+  log("Descargando pronóstico…");
+  let weather=S.weather;
+  try{
+    const locs=[["La Plata",-34.92,-57.95],["Dolores",-36.31,-57.68],["Mar del Plata",-38.0,-57.56]];
+    const w=await fetchJSON(`https://api.open-meteo.com/v1/forecast?latitude=${locs.map(l=>l[1]).join(",")}&longitude=${locs.map(l=>l[2]).join(",")}&daily=temperature_2m_min,temperature_2m_max,precipitation_probability_max,wind_gusts_10m_max,weather_code&timezone=America%2FArgentina%2FBuenos_Aires&forecast_days=3`);
+    const arr=Array.isArray(w)?w:[w];
+    weather={at:new Date().toISOString(),locs:arr.map((x,i)=>({name:locs[i][0],daily:x.daily}))};
+  }catch(e){errors.push("Pronóstico: "+e.message);}
+
+  S.routes=routes; S.osm=osm; S.weather=weather; S.updatedAt=new Date().toISOString(); S.errors=errors;
+  if(!S.routes[S.active])S.active="principal";
+  applyCalibration();
+  await saveState();
+  if(withTiles){ await downloadTiles(log); }
+  log("Listo"+(errors.length?" (con avisos: "+errors.join(" · ")+")":"")+".");
+  renderAll(); MapView.fit();
+  return true;
+}
+function applyCalibration(){
+  const main=S.routes.principal; if(!main){CAL=null;return;}
+  let anchors=DATA.anchors.map(a=>({...a}));
+  if(S.osm&&S.osm.places)for(const a of anchors){const p=S.osm.places.find(x=>x.name===a.name);if(p){a.lat=p.lat;a.lon=p.lon;}}
+  if(S.osm&&S.osm.tolls){const sb=S.osm.tolls.find(t=>/samborom/i.test(t.name||""));if(sb)anchors.push({name:"Peaje Samborombón",km:90.1,lat:sb.lat,lon:sb.lon});}
+  CAL=calibrate(main,anchors);
+  buildPois();
+}
+async function saveState(){
+  const pack={routes:{},osm:S.osm,weather:S.weather,updatedAt:S.updatedAt,active:S.active,dir:S.dir,errors:S.errors||[]};
+  for(const k in S.routes){const r=S.routes[k];pack.routes[k]={pts:r.pts.map(p=>[+p[0].toFixed(5),+p[1].toFixed(5)]),dist:r.dist,dur:r.dur,name:r.name,color:r.color,desc:r.desc};}
+  try{await Store.set("state",pack);}catch(e){console.warn(e)}
+}
+async function loadState(){
+  try{const p=await Store.get("state"); if(!p)return;
+    S.routes={}; for(const k in p.routes){const r=p.routes[k];S.routes[k]={...r,cum:cumul(r.pts)};}
+    S.osm=p.osm; S.weather=p.weather; S.updatedAt=p.updatedAt; S.active=p.active||"principal"; S.dir=p.dir||"A"; S.errors=p.errors||[];
+    applyCalibration();
+  }catch(e){console.warn(e)}
+}
+
+/* ---------- Descarga de mosaicos del mapa ---------- */
+function lon2x(lon,z){return (lon+180)/360*2**z}
+function lat2y(lat,z){const s=Math.sin(lat*rad);return (0.5-Math.log((1+s)/(1-s))/(4*Math.PI))*2**z}
+function tilesForRoutes(){
+  const set=new Set(), detail=document.getElementById("hiDetail")?.checked;
+  for(const k in S.routes){
+    const r=S.routes[k], isMain=k==="principal"||k===S.active;
+    const zmax=isMain?(detail?15:14):12;
+    for(let z=7;z<=zmax;z++){
+      const rad1=z<=10?1:(isMain&&z<=13?1:0);
+      const step=Math.max(150,40075000*Math.cos(36*rad)/2**z/3);
+      let acc=step;
+      for(let i=0;i<r.pts.length;i++){
+        if(i>0)acc+=hav(r.pts[i-1],r.pts[i]); if(acc<step&&i!==r.pts.length-1)continue; acc=0;
+        const x=Math.floor(lon2x(r.pts[i][1],z)),y=Math.floor(lat2y(r.pts[i][0],z));
+        for(let dx=-rad1;dx<=rad1;dx++)for(let dy=-rad1;dy<=rad1;dy++)set.add(z+"/"+(x+dx)+"/"+(y+dy));
+      }
+    }
+  }
+  // Destino (ciudad) con más detalle
+  for(let z=13;z<=15;z++){const cx=Math.floor(lon2x(PLACES.destino.lon,z)),cy=Math.floor(lat2y(PLACES.destino.lat,z)),r=z===13?2:z===14?3:4;for(let dx=-r;dx<=r;dx++)for(let dy=-r;dy<=r;dy++)set.add(z+"/"+(cx+dx)+"/"+(cy+dy));}
+  return [...set];
+}
+async function fetchTile(key){
+  const [z,x,y]=key.split("/").map(Number);
+  for(const u of [TILE_URL(z,x,y),TILE_URL_FALLBACK(z,x,y)]){
+    try{const r=await fetch(u,{mode:"cors"}); if(r.ok&&/image/.test(r.headers.get("content-type")||"")){const b=await r.blob(); if(b.size<300)continue; await Store.putTile(key,b); return b;}}catch(e){}
+  }
+  return null;
+}
+async function downloadTiles(log){
+  const all=tilesForRoutes(); const have=await Store.tileKeys(); const todo=all.filter(k=>!have.has(k));
+  let done=0, fail=0; const bar=document.getElementById("tileBar");
+  const n=todo.length; log(`Descargando mapa: ${n} mosaicos nuevos (${all.length-n} ya guardados)…`);
+  let idx=0;
+  const worker=async()=>{while(idx<todo.length){const k=todo[idx++]; const b=await fetchTile(k); if(!b)fail++; done++;
+    if(done%10===0||done===n){log(`Descargando mapa: ${done}/${n}${fail?" ("+fail+" fallidos)":""}`); if(bar)bar.style.width=(100*done/n)+"%";}}};
+  await Promise.all([1,2,3,4,5,6].map(worker));
+  await Store.set("tilesInfo_"+TILE_VER,{count:all.length-fail,at:new Date().toISOString()});
+  MapView.draw();
+}
+
+/* =====================================================================
+   MAPA (renderizador propio en canvas, sin dependencias)
+   ===================================================================== */
+const MapView=(()=>{
+  const cv=document.getElementById("map"), ctx=cv.getContext("2d");
+  let W=0,H=0,dpr=1, cx=lon2x(-57.75,0)*256, cy=lat2y(-36.4,0)*256, z=7.3; // centro en px mundo z0
+  const cache=new globalThis.Map(); const pending=new Set();
+  let needFit=false;
+  function resize(){dpr=window.devicePixelRatio||1;W=cv.clientWidth;H=cv.clientHeight;if(!W||!H)return;cv.width=W*dpr;cv.height=H*dpr;if(needFit||!isFinite(z)){needFit=false;fit();}draw();}
+  const toScr=(lat,lon)=>{const s=2**z;return [ (lon2x(lon,0)*256-cx)*s+W/2, (lat2y(lat,0)*256-cy)*s+H/2 ];};
+  const fromScr=(x,y)=>{const s=2**z;const wx=(x-W/2)/s+cx, wy=(y-H/2)/s+cy;const lon=wx/256*360-180;const n=Math.PI-2*Math.PI*wy/256;return [Math.atan(Math.sinh(n))/rad,lon];};
+  function getTile(tz,x,y){
+    const key=tz+"/"+x+"/"+y; const c=cache.get(key); if(c)return c==="x"?null:c;
+    if(pending.has(key))return null; pending.add(key);
+    (async()=>{let b=await Store.tile(key); if(!b&&S.online)b=await fetchTile(key);
+      if(b){try{const im=await createImageBitmap(b);cache.set(key,im);if(cache.size>400){cache.delete(cache.keys().next().value);}}catch(e){cache.set(key,"x")}}
+      else cache.set(key,"x");
+      pending.delete(key); if(b)draw(); else setTimeout(()=>{if(cache.get(key)==="x")cache.delete(key)},15000);})();
+    return null;
+  }
+  let raf=0; function draw(){ if(raf)return; raf=requestAnimationFrame(()=>{raf=0;paint();}); }
+  function paint(){
+    ctx.setTransform(dpr,0,0,dpr,0,0); ctx.fillStyle="#e9eef2"; ctx.fillRect(0,0,W,H);
+    const tz=Math.max(3,Math.min(18,Math.round(z))); const sc=2**(z-tz); const ts=256*sc;
+    const wx0=(cx-W/2/2**z)*2**tz/256*256, wy0=(cy-H/2/2**z)*2**tz/256*256; // en px de tz
+    const x0=Math.floor(wx0/256), y0=Math.floor(wy0/256), nx=Math.ceil(W/ts)+1, ny=Math.ceil(H/ts)+1;
+    for(let x=x0;x<=x0+nx;x++)for(let y=y0;y<=y0+ny;y++){
+      if(y<0||y>=2**tz)continue; const xx=((x%2**tz)+2**tz)%2**tz;
+      const sx=(x*256-wx0)*sc, sy=(y*256-wy0)*sc;
+      let im=getTile(tz,xx,y);
+      if(im){ctx.drawImage(im,sx,sy,ts+0.5,ts+0.5);continue;}
+      // usar mosaico padre ya cargado como relleno
+      for(let up=1;up<=4;up++){const pz=tz-up; if(pz<3)break; const k=pz+"/"+(xx>>up)+"/"+(y>>up); const p=cache.get(k); if(p&&p!=="x"){const f=2**up, ox=(xx%f)*256/f, oy=(y%f)*256/f; ctx.drawImage(p,ox,oy,256/f,256/f,sx,sy,ts+0.5,ts+0.5);break;}}
+    }
+    // rutas
+    const keys=Object.keys(S.routes).sort((a,b)=>(a===S.active)-(b===S.active));
+    for(const k of keys){const r=S.routes[k]; const act=k===S.active;
+      ctx.lineJoin="round";ctx.lineCap="round";
+      ctx.beginPath(); r.pts.forEach((p,i)=>{const [x,y]=toScr(p[0],p[1]); i?ctx.lineTo(x,y):ctx.moveTo(x,y);});
+      if(act){ctx.strokeStyle="#ffffff";ctx.lineWidth=9;ctx.stroke();}
+      ctx.strokeStyle=r.color||"#1e7bff"; ctx.globalAlpha=act?1:.55; ctx.lineWidth=act?5:3; ctx.stroke(); ctx.globalAlpha=1;
+    }
+    // POIs
+    const showFuel=z>=10.5;
+    for(const p of S.pois){
+      if(!relevantDir(p))continue;
+      if(p.type==="fuel"&&!showFuel)continue;
+      if(p.type==="caution"&&z<9)continue;
+      const [x,y]=toScr(p.lat,p.lon); if(x<-30||y<-30||x>W+30||y>H+30)continue; p._x=x;p._y=y;
+      if(p.type==="radar"){const lim=limitAt(p.km,S.dir); const rr=z>=10?13:9;
+        ctx.beginPath();ctx.arc(x,y,rr,0,7);ctx.fillStyle="#fff";ctx.fill();ctx.lineWidth=z>=10?4:3;ctx.strokeStyle="#d11";ctx.stroke();
+        if(z>=9){ctx.fillStyle="#111";ctx.font=`bold ${z>=10?11:9}px system-ui`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(lim??"R",x,y+0.5);}}
+      else if(p.type==="osmcam"){ if(p.dup&&z<12)continue; ctx.beginPath();ctx.arc(x,y,7,0,7);ctx.fillStyle="#ff8a3d";ctx.fill();ctx.lineWidth=2;ctx.strokeStyle="#fff";ctx.stroke();}
+      else if(p.type==="toll"){ctx.fillStyle="#5b6cff";ctx.fillRect(x-7,y-7,14,14);ctx.strokeStyle="#fff";ctx.lineWidth=2;ctx.strokeRect(x-7,y-7,14,14);ctx.fillStyle="#fff";ctx.font="bold 9px system-ui";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText("$",x,y+.5);}
+      else if(p.type==="fuel"){ctx.beginPath();ctx.arc(x,y,5,0,7);ctx.fillStyle="#2fbf71";ctx.fill();ctx.strokeStyle="#fff";ctx.lineWidth=1.5;ctx.stroke();}
+      else if(p.type==="caution"){ctx.beginPath();ctx.moveTo(x,y-9);ctx.lineTo(x+8,y+6);ctx.lineTo(x-8,y+6);ctx.closePath();ctx.fillStyle="#ffd666";ctx.fill();ctx.strokeStyle="#333";ctx.lineWidth=1.5;ctx.stroke();ctx.fillStyle="#333";ctx.font="bold 9px system-ui";ctx.textAlign="center";ctx.fillText("!",x,y+3);}
+      else if(p.type==="mobile"){
+        const main=S.routes.principal; if(main&&CAL){const a=alongFromKm(p.from),b=alongFromKm(p.to);ctx.beginPath();let first=true;for(let al=a;al<=b;al+=300){const q=pointAt(al,main.pts,main.cum);const [sx,sy]=toScr(q[0],q[1]);first?ctx.moveTo(sx,sy):ctx.lineTo(sx,sy);first=false;}
+          ctx.strokeStyle="rgba(255,176,32,.85)";ctx.lineWidth=10;ctx.setLineDash([6,6]);ctx.stroke();ctx.setLineDash([]);}
+      }
+    }
+    // GPS
+    if(S.gps){const [x,y]=toScr(S.gps.lat,S.gps.lon);
+      ctx.beginPath();ctx.arc(x,y,Math.max(8,S.gps.acc*2**z/156543/Math.cos(S.gps.lat*rad)),0,7);ctx.fillStyle="rgba(63,167,255,.15)";ctx.fill();
+      ctx.save();ctx.translate(x,y);if(S.gps.heading!=null&&!isNaN(S.gps.heading))ctx.rotate(S.gps.heading*rad);
+      ctx.beginPath();ctx.moveTo(0,-13);ctx.lineTo(9,10);ctx.lineTo(0,5);ctx.lineTo(-9,10);ctx.closePath();ctx.fillStyle="#1e7bff";ctx.fill();ctx.strokeStyle="#fff";ctx.lineWidth=2.5;ctx.stroke();ctx.restore();}
+  }
+  function setView(lat,lon,zz){cx=lon2x(lon,0)*256;cy=lat2y(lat,0)*256;if(zz!=null)z=zz;draw();}
+  function fit(){if(!W||!H){needFit=true;return;}const r=S.routes[S.active]||S.routes.principal; let la1=-34.9,la2=-38.0,lo1=-58.0,lo2=-57.5;
+    if(r){la1=90;la2=-90;lo1=180;lo2=-180;for(const p of r.pts){la1=Math.min(la1,p[0]);la2=Math.max(la2,p[0]);lo1=Math.min(lo1,p[1]);lo2=Math.max(lo2,p[1]);}}
+    const x1=lon2x(lo1,0)*256,x2=lon2x(lo2,0)*256,y1=lat2y(la2,0)*256,y2=lat2y(la1,0)*256;
+    cx=(x1+x2)/2;cy=(y1+y2)/2; z=Math.log2(Math.min((W-40)/Math.max(1e-9,Math.abs(x2-x1)),(H-140)/Math.max(1e-9,Math.abs(y2-y1)))); if(!isFinite(z))z=7.3; z=Math.min(15,Math.max(5,z)); draw();}
+  function zoomAt(f,px,py){const before=fromScr(px,py); z=Math.max(5,Math.min(17.5,z+f)); const after=fromScr(px,py);
+    cx-= (lon2x(after[1],0)-lon2x(before[1],0))*256; cy-=(lat2y(after[0],0)-lat2y(before[0],0))*256; draw();}
+  // interacción
+  const ptrs=new globalThis.Map(); let lastDist=0, moved=false, downT=0, lastTap=0;
+  cv.addEventListener("pointerdown",e=>{cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});moved=false;downT=Date.now();if(ptrs.size===2){const [a,b]=[...ptrs.values()];lastDist=Math.hypot(a.x-b.x,a.y-b.y);}});
+  cv.addEventListener("pointermove",e=>{const p=ptrs.get(e.pointerId);if(!p)return;const dx=e.clientX-p.x,dy=e.clientY-p.y;
+    if(ptrs.size===1){if(Math.abs(dx)+Math.abs(dy)>3){moved=true;S.follow=false;updFollowBtn();}const s=2**z;cx-=dx/s;cy-=dy/s;p.x=e.clientX;p.y=e.clientY;draw();}
+    else if(ptrs.size===2){p.x=e.clientX;p.y=e.clientY;const [a,b]=[...ptrs.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);const r=cv.getBoundingClientRect();
+      if(lastDist){zoomAt(Math.log2(d/lastDist),(a.x+b.x)/2-r.left,(a.y+b.y)/2-r.top);}lastDist=d;moved=true;}});
+  const up=e=>{ptrs.delete(e.pointerId);lastDist=0;if(!moved&&Date.now()-downT<350&&ptrs.size===0){const r=cv.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;
+      if(Date.now()-lastTap<300){zoomAt(1,x,y);lastTap=0;return;} lastTap=Date.now(); tap(x,y);}};
+  cv.addEventListener("pointerup",up);cv.addEventListener("pointercancel",e=>{ptrs.delete(e.pointerId);lastDist=0;});
+  cv.addEventListener("wheel",e=>{e.preventDefault();const r=cv.getBoundingClientRect();zoomAt(-e.deltaY/300,e.clientX-r.left,e.clientY-r.top);},{passive:false});
+  function tap(x,y){let best=null,bd=22;for(const p of S.pois){if(p._x==null||!relevantDir(p))continue;if(p.type==="fuel"&&z<10.5)continue;const d=Math.hypot(p._x-x,p._y-y);if(d<bd){bd=d;best=p;}}
+    // tocar una ruta la selecciona
+    if(!best){let br=null,bdr=14;for(const k in S.routes){const r=S.routes[k];for(let i=0;i<r.pts.length;i+=2){const [sx,sy]=toScr(r.pts[i][0],r.pts[i][1]);const d=Math.hypot(sx-x,sy-y);if(d<bdr){bdr=d;br=k;}}}
+      if(br&&br!==S.active){S.active=br;saveState();renderAll();showInfo(null,br);return;} }
+    showInfo(best);}
+  window.addEventListener("resize",resize);
+  return {resize,draw,setView,fit,zoomAt:(f)=>zoomAt(f,W/2,H/2),get z(){return z}};
+})();
+
+function relevantDir(p){ return !p.s||p.s==="AD"||p.s===S.dir; }
+
+function showInfo(p,routeKey){
+  const el=document.getElementById("info");
+  if(routeKey){const r=S.routes[routeKey];el.innerHTML=`<b style="color:${r.color}">■</b> <b>${r.name}</b><br><span class="mut small">${(r.dist/1000).toFixed(0)} km · ${fmtDur(r.dur)} · ruta activa</span>`;el.classList.add("on");clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove("on"),4000);return;}
+  if(!p){el.classList.remove("on");return;}
+  let h=`<b>${p.title}</b>`;
+  if(p.km!=null)h+=`<br>km ${fmtKm(p.km)} de Ruta 2`+(p.s&&p.s!=="AD"?` · solo sentido ${p.s==="A"?"a la Costa":"a Buenos Aires"}`:"");
+  if(p.type==="radar"){const l=limitAt(p.km,S.dir);h+=`<br>Máxima en ese punto (${S.dir==="A"?"ida":"vuelta"}): <b>${l??"?"} km/h</b>`;}
+  if(p.type==="osmcam"&&p.max)h+=`<br>Máxima indicada en OSM: ${p.max} km/h`;
+  if(p.txt)h+=`<br>${p.txt}`;
+  if(p.calc)h+=`<br><span class="mut small">Posición calculada a partir del km oficial (±1 km). ${p.src?"Fuente: "+p.src:""}</span>`;
+  else if(p.src)h+=`<br><span class="mut small">Fuente: ${p.src}</span>`;
+  el.innerHTML=h;el.classList.add("on");
+}
+const fmtDur=s=>{const h=Math.floor(s/3600),m=Math.round(s%3600/60);return h+" h "+String(m).padStart(2,"0")+" min";};
+
+/* =====================================================================
+   GPS + MODO VIAJE
+   ===================================================================== */
+let audioCtx=null, wakeLock=null;
+function beep(n=1,f=880){try{if(!audioCtx)return;for(let i=0;i<n;i++){const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.frequency.value=f;o.connect(g);g.connect(audioCtx.destination);const t=audioCtx.currentTime+i*0.25;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.4,t+.02);g.gain.exponentialRampToValueAtTime(.0001,t+.2);o.start(t);o.stop(t+.22);}}catch(e){}}
+async function startTrip(){
+  try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();await audioCtx.resume();}catch(e){}
+  try{if("wakeLock" in navigator)wakeLock=await navigator.wakeLock.request("screen");}catch(e){}
+  const st=await gpsStatus();
+  if(st!=="granted"&&st!=="prompt"){gpsHelp(st);return;}
+  if(S.watchId!=null)navigator.geolocation.clearWatch(S.watchId);
+  S.watchId=navigator.geolocation.watchPosition(p=>{setGpsChip("ok");document.getElementById("gpsBox").classList.remove("on");onPos(p);},
+    err=>{const code=err.code===1?"denied":err.code===2?"unavailable":"timeout";setGpsChip("bad");gpsHelp(code);},
+    {enableHighAccuracy:true,maximumAge:2000,timeout:30000});
+  S.follow=true; updFollowBtn(); document.getElementById("drive").classList.add("on"); renderDrive();
+}
+/* ---------- Permisos y diagnóstico del GPS ---------- */
+async function gpsStatus(){
+  if(!("geolocation" in navigator))return "nogeo";
+  if(!window.isSecureContext)return "insecure";
+  try{const p=await navigator.permissions.query({name:"geolocation"});
+    if(!gpsStatus._w){gpsStatus._w=1;p.onchange=()=>{refreshGpsChip();if(p.state==="granted"&&document.getElementById("gpsBox").classList.contains("on"))startTrip();};}
+    return p.state;}catch(e){return "prompt";}
+}
+function setGpsChip(state){const c=document.getElementById("gpsChip");c.className="chip"+(state==="ok"?" ok":state==="bad"?" bad":"");c.textContent=state==="ok"?"GPS ✓":state==="bad"?"GPS ⚠":"GPS";}
+async function refreshGpsChip(){const st=await gpsStatus();if(S.watchId!=null&&S.gps&&st==="granted")setGpsChip("ok");else setGpsChip(st==="granted"||st==="prompt"?"":"bad");}
+async function gpsHelp(code){
+  if(!code)code=await gpsStatus();
+  const box=document.getElementById("gpsBox");
+  const url=location.protocol==="file:"||location.protocol==="content:"?"":location.href.split("#")[0];
+  let h="";
+  if(code==="insecure"){h=`<h2>📍 El GPS está bloqueado en esta forma de abrir la app</h2>
+    <div class="small">Chrome solo da la ubicación a páginas abiertas desde una dirección <b>https://</b>. Abierta como archivo descargado, la ubicación queda bloqueada aunque le des permiso.</div>
+    <ol class="small"><li>Subí la carpeta de la app a tu hosting (alwaysdata) y abrila desde su dirección <b>https://…</b>.</li><li>En Chrome: ⋮ → <b>Agregar a pantalla principal</b>.</li><li>Abrila desde ese ícono y tocá <b>Activar GPS</b>.</li></ol>
+    <div class="small mut">Sin GPS igual podés usar el mapa y la pestaña Tramos.</div>`;}
+  else if(code==="prompt"||code==="granted"){h=`<h2>📍 Activar el GPS</h2>
+    <div class="small">La app necesita tu ubicación para mostrar la máxima del tramo y avisarte antes de cada control.</div>
+    <ol class="small"><li>Verificá que la <b>Ubicación</b> del teléfono esté encendida (deslizá desde arriba → ícono de ubicación).</li><li>Tocá <b>Activar GPS</b> y elegí <b>Permitir</b> (mejor “Mientras se usa la app”) cuando Chrome pregunte.</li></ol>`;}
+  else if(code==="denied"){h=`<h2>📍 La ubicación está bloqueada para esta página</h2>
+    <div class="small">Chrome no vuelve a preguntar después de un “Bloquear”. Para habilitarla:</div>
+    <ol class="small"><li>Tocá el ícono a la izquierda de la dirección (🔒 o ⚙) → <b>Permisos</b> → <b>Ubicación</b> → <b>Permitir</b>.</li>
+    <li>O en Chrome: ⋮ → <b>Configuración</b> → <b>Configuración de sitios</b> → <b>Ubicación</b> → buscá este sitio → <b>Permitir</b>.</li>
+    <li>Si la usás instalada en la pantalla principal: Ajustes de Android → <b>Apps</b> → <b>Chrome</b> → <b>Permisos</b> → <b>Ubicación</b> → <b>Permitir mientras se usa</b>.</li>
+    <li>Volvé a la app y tocá <b>Reintentar</b>.</li></ol>`;}
+  else if(code==="unavailable"){h=`<h2>📍 No hay señal de ubicación</h2>
+    <ol class="small"><li>Encendé la <b>Ubicación</b> del teléfono (ajustes rápidos).</li><li>En Ajustes → Ubicación, activá <b>Precisión de ubicación de Google</b> / alta precisión.</li><li>Si estás bajo techo, acercate a una ventana o salí al exterior.</li></ol>`;}
+  else if(code==="timeout"){h=`<h2>📍 El GPS tarda en responder</h2><div class="small">Todavía no hay posición. Puede tardar hasta un minuto la primera vez, sobre todo bajo techo. Verificá que la Ubicación del teléfono esté encendida.</div>`;}
+  else {h=`<h2>📍 GPS no disponible</h2><div class="small">Este navegador no ofrece ubicación. Abrí la app en Chrome para Android.</div>`;}
+  const canTry=code!=="insecure"&&code!=="nogeo";
+  h+=`<div class="row" style="margin-top:10px">${canTry?`<button class="pri grow" id="gpsTry">${code==="prompt"||code==="granted"?"Activar GPS":"Reintentar"}</button>`:""}<button id="gpsClose">${canTry?"Ahora no":"Entendido"}</button></div>`;
+  box.innerHTML=`<div class="card">${h}</div>`; box.classList.add("on");
+  document.getElementById("gpsClose").onclick=()=>box.classList.remove("on");
+  const t=document.getElementById("gpsTry");
+  if(t)t.onclick=()=>{t.disabled=true;t.textContent="Esperando permiso…";
+    navigator.geolocation.getCurrentPosition(p=>{box.classList.remove("on");setGpsChip("ok");onPos(p);startTrip();},
+      e=>{setGpsChip("bad");gpsHelp(e.code===1?"denied":e.code===2?"unavailable":"timeout");},{enableHighAccuracy:true,timeout:30000,maximumAge:0});};
+}
+function stopTrip(){ if(S.watchId!=null)navigator.geolocation.clearWatch(S.watchId); S.watchId=null; S.follow=false; updFollowBtn();
+  try{wakeLock&&wakeLock.release();}catch(e){} wakeLock=null; document.getElementById("drive").classList.remove("on"); document.getElementById("alert").classList.remove("on"); }
+document.addEventListener("visibilitychange",async()=>{if(document.visibilityState==="visible"&&S.watchId!=null){try{wakeLock=await navigator.wakeLock.request("screen")}catch(e){}}});
+let lastPos=null;
+function onPos(pos){
+  const c=pos.coords; let heading=c.heading;
+  if((heading==null||isNaN(heading))&&lastPos&&hav([lastPos.lat,lastPos.lon],[c.latitude,c.longitude])>15){const y=Math.sin((c.longitude-lastPos.lon)*rad)*Math.cos(c.latitude*rad);const x=Math.cos(lastPos.lat*rad)*Math.sin(c.latitude*rad)-Math.sin(lastPos.lat*rad)*Math.cos(c.latitude*rad)*Math.cos((c.longitude-lastPos.lon)*rad);heading=(Math.atan2(y,x)/rad+360)%360;}
+  S.gps={lat:c.latitude,lon:c.longitude,acc:c.accuracy||20,speed:c.speed!=null&&!isNaN(c.speed)?c.speed*3.6:null,heading};
+  if(!lastPos||hav([lastPos.lat,lastPos.lon],[c.latitude,c.longitude])>15)lastPos={lat:c.latitude,lon:c.longitude};
+  if(S.follow)MapView.setView(S.gps.lat,S.gps.lon,Math.max(MapView.z,12.5)); else MapView.draw();
+  renderDrive(); if(document.getElementById("v-tira").classList.contains("on"))renderTira();
+}
+let hintMain=null, hintAct=null;
+function tripState(){
+  if(!S.gps)return null; const g=[S.gps.lat,S.gps.lon]; const st={};
+  const main=S.routes.principal, act=S.routes[S.active]||main;
+  if(main){const pm=project(g,main.pts,main.cum,hintMain);hintMain=pm.i; if(pm.dist<120&&CAL)st.km=kmFromAlong(pm.along); st.mainDist=pm.dist;}
+  if(act){const pa=project(g,act.pts,act.cum,hintAct);hintAct=pa.i;st.offRoute=pa.dist>300;st.along=pa.along;
+    const total=act.cum[act.cum.length-1];
+    st.remain=S.dir==="A"?total-pa.along:pa.along;
+    // próximos puntos sobre la ruta activa
+    const up=[];
+    for(const p of S.pois){ if(!relevantDir(p)||p.type==="fuel")continue;
+      if(p._act==null||p._actKey!==S.active){const pr=project([p.lat,p.lon],act.pts,act.cum);p._act=pr.dist<120?pr.along:null;p._actKey=S.active;}
+      if(p._act==null)continue; const d=S.dir==="A"?p._act-pa.along:pa.along-p._act; if(d>-40&&d<40000)up.push({p,d});}
+    up.sort((a,b)=>a.d-b.d); st.up=up;
+  }
+  if(st.km!=null){st.limit=limitAt(st.km,S.dir);st.next=nextChange(st.km,S.dir);
+    const inMob=DATA.mobile.find(m=>!m.general&&st.km>=m.from&&st.km<=m.to); st.mobile=inMob;}
+  return st;
+}
+function renderDrive(){
+  const el=document.getElementById("drive"); if(!el.classList.contains("on"))return;
+  const st=tripState();
+  if(!st){el.innerHTML=`<div class="row"><div class="grow">Esperando señal GPS…</div><button onclick="stopTrip()">Terminar</button></div>`;return;}
+  const sp=S.gps.speed, over=st.limit&&sp!=null&&sp>st.limit+2;
+  const nr=st.up?st.up.find(u=>u.p.type==="radar"||u.p.type==="osmcam"):null;
+  let h=`<div class="row" style="align-items:center">
+    <div class="sign big">${st.limit??"–"}</div>
+    <div class="grow">
+      <div style="font-size:34px;font-weight:800;color:${over?"var(--bad)":"var(--tx)"}">${sp!=null?Math.round(sp):"–"} <span style="font-size:15px;font-weight:400" class="mut">km/h</span></div>
+      <div class="small">${st.km!=null?"km "+fmtKm(st.km)+" Ruta 2":(st.mainDist!=null?"Fuera de la Ruta 2":"")}${st.offRoute?" · <b style='color:var(--warn)'>fuera de la ruta elegida</b>":""}</div>
+      ${st.next&&st.km!=null?`<div class="small">Próximo cambio: <b>${st.next.v??"fin"} km/h</b> en ${fmtD(Math.abs(st.next.km-st.km)*1000)}</div>`:""}
+      ${nr?`<div class="small">Próximo control: <b>${fmtD(Math.max(0,nr.d))}</b> ${nr.p.type==="radar"?"(máx. "+(limitAt(nr.p.km,S.dir)??"?")+")":"(OSM)"}</div>`:""}
+      ${st.remain!=null?`<div class="small mut">Faltan ${fmtD(st.remain)}</div>`:""}
+    </div>
+    <button onclick="stopTrip()">✕</button></div>`;
+  if(st.mobile)h+=`<div class="small" style="margin-top:6px;color:var(--warn)">⚠ ${st.mobile.txt}</div>`;
+  el.innerHTML=h;
+  // alertas
+  const al=document.getElementById("alert");
+  const items=(st.up||[]).filter(u=>["radar","osmcam","toll","caution","mobile"].includes(u.p.type)&&u.d<2000&&u.d>-30);
+  if(items.length){const u=items[0];const near=u.d<500;const lim=u.p.type==="radar"?limitAt(u.p.km,S.dir):null;
+    al.className="on "+(near&&(u.p.type==="radar"||u.p.type==="osmcam")?"b":"w");
+    const ico={radar:"📷",osmcam:"📷",toll:"💲",caution:"⚠️",mobile:"🚓"}[u.p.type];
+    al.innerHTML=`${ico} ${u.p.title} a ${fmtD(Math.max(0,u.d))}${lim?` · máx. ${lim} km/h`:""}`;
+    const id=u.p.title+u.p.lat+(near?"n":"f");
+    if(!S.alerted.has(id)){S.alerted.add(id);const strong=u.p.type==="radar"||u.p.type==="osmcam";beep(near?3:1,near?1100:800);try{navigator.vibrate&&navigator.vibrate(near?[300,100,300]:200)}catch(e){}}
+  } else al.className="";
+}
+function updFollowBtn(){document.getElementById("bGps").style.background=S.follow?"var(--acc)":"";}
+
+/* =====================================================================
+   VISTAS
+   ===================================================================== */
+function toast(msg){const el=document.getElementById("info");el.innerHTML=msg;el.classList.add("on");clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove("on"),5000);}
+function renderEmpty(){const e=document.getElementById("empty");e.style.display=Object.keys(S.routes).length?"none":"flex";
+  e.innerHTML=`<div style="background:rgba(255,255,255,.92);padding:16px;border-radius:12px;max-width:340px;pointer-events:auto">Todavía no hay mapa guardado.<br><br><b>Con wifi</b>, abrí la pestaña <b>Datos</b> y tocá <b>Actualizar todo</b>.<br><br><span style="font-size:13px">Mientras tanto, en <b>Tramos</b> ya tenés todas las velocidades y radares oficiales de la Ruta 2, sin conexión.</span></div>`;}
+
+function renderTira(){
+  const el=document.getElementById("v-tira");
+  const dir=S.dir, rows=(dir==="A"?DATA.speedA:DATA.speedD);
+  const st=S.gps?tripState():null; const curKm=st?.km;
+  let h=`<div class="card"><h2>Ruta 2 · ${dir==="A"?"Ida (hacia Mar del Plata)":"Vuelta (hacia Buenos Aires)"}</h2>
+  <div class="small mut">Velocidades máximas por kilómetro según el registro oficial de InfraccionesBA (consultado el ${DATA.version.split("-").reverse().join("/")}). Cada fila indica desde qué km rige cada máxima y qué hay en ese tramo.</div>
+  <div class="small legend" style="margin-top:6px"><span class="pill r">Radar fijo</span><span class="pill o">Radar OSM</span><span class="pill m">Control móvil</span><span class="pill t">Peaje</span><span class="pill c">Precaución</span></div></div>`;
+  h+=`<div class="card" style="padding:4px 8px">`;
+  for(let i=0;i<rows.length;i++){
+    const r=rows[i], nx=rows[i+1]; const from=r[0], to=nx?nx[0]:null;
+    if(r[1]==null&&!to)continue;
+    const lo=Math.min(from,to??from), hi=Math.max(from,to??from);
+    const inSeg=k=>k>=lo&&k<hi;
+    const tags=[];
+    for(const f of DATA.fixed)if((f.s==="AD"||f.s===dir)&&inSeg(f.km))tags.push(`<span class="pill r">📷 km ${fmtKm(f.km)} ${f.loc}</span>`);
+    for(const t of DATA.tolls)if(inSeg(t.km))tags.push(`<span class="pill t">💲 ${t.name}</span>`);
+    for(const c of DATA.caution)if(inSeg(c.km))tags.push(`<span class="pill c">⚠ ${c.txt}</span>`);
+    for(const m of DATA.mobile)if(!m.general&&m.from<hi&&m.to>lo)tags.push(`<span class="pill m">🚓 Móviles km ${m.from}–${m.to}</span>`);
+    for(const p of S.pois)if(p.type==="osmcam"&&!p.dup&&p.km!=null&&inSeg(p.km))tags.push(`<span class="pill o">📷 OSM km ${fmtKm(p.km)}</span>`);
+    const cur=curKm!=null&&inSeg(curKm);
+    const len=to!=null?Math.abs(to-from):null;
+    const tref=dir==="A"&&nx&&nx[2]!=null?` · tiempo ref. ${String(nx[2]).replace(".",",")} min`:"";
+    h+=`<div class="tira-row${cur?" cur":""}" ${cur?'id="curRow"':""}>
+      <div class="tira-km"><b>km ${fmtKm(from)}</b><br><span class="mut small">${to!=null?"→ "+fmtKm(to):"fin"}${len!=null?"<br>"+fmtD(len*1000):""}</span></div>
+      <div class="sign">${r[1]??"–"}</div>
+      <div class="grow small">${tags.join("")||'<span class="mut">Sin controles fijos informados</span>'}${tref?`<div class="mut" style="margin-top:3px">${tref.slice(3)}</div>`:""}${cur?`<div style="color:var(--acc);font-weight:700">● Estás acá (km ${fmtKm(curKm)})</div>`:""}</div></div>`;
+  }
+  h+=`</div>`;
+  h+=`<div class="card"><h2>Otros radares informados (desvíos)</h2><table>${DATA.otherRoutes.map(o=>`<tr><td><b>${o.ruta}</b></td><td>${o.items}</td></tr>`).join("")}</table>
+  <div class="small mut" style="margin-top:6px">Los controles móviles de la ANSV y la Provincia cambian de lugar y no tienen ubicación publicada: respetá la señalización en todo el recorrido.</div></div>`;
+  el.innerHTML=h;
+  const cr=document.getElementById("curRow"); if(cr&&renderTira._lastCur!==curKm){cr.scrollIntoView({block:"center"});} renderTira._lastCur=curKm;
+}
+
+function navLinks(r,k){
+  const d=PLACES.destino; const dv=DESVIOS.find(x=>x.id===k);
+  let g=`https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lon}&travelmode=driving`;
+  if(dv&&dv.via.length)g+="&waypoints="+encodeURIComponent(dv.via.map(p=>p[0]+","+p[1]).join("|"));
+  if(dv&&dv.exclude==="toll")g+="&avoid=tolls";
+  const w=`https://waze.com/ul?ll=${d.lat},${d.lon}&navigate=yes`;
+  return `<a href="${g}" target="_blank" rel="noopener">Google Maps</a> · <a href="${w}" target="_blank" rel="noopener">Waze</a>`;
+}
+function renderDesvios(){
+  const el=document.getElementById("v-desvios");
+  const keys=Object.keys(S.routes);
+  let h=`<div class="card"><h2>Rutas y desvíos calculados</h2><div class="small mut">Tocá una para que sea la ruta activa (las alertas siguen esa ruta). Se recalculan al actualizar con conexión; sin conexión se usan las últimas guardadas.</div></div>`;
+  if(!keys.length){h+=`<div class="card">Todavía no se calcularon. Andá a <b>Datos</b> y tocá <b>Actualizar todo</b> con wifi.</div>`;}
+  else{
+    const main=S.routes.principal;
+    h+=`<div class="card" style="padding:4px 12px">`;
+    const order=["principal","alt1","alt2","alt3",...DESVIOS.slice(1).map(d=>d.id)].filter(k=>S.routes[k]);
+    for(const k of order){const r=S.routes[k];
+      // cuántos radares conocidos toca
+      let nR=0;for(const p of S.pois){if((p.type==="radar"||(p.type==="osmcam"&&!p.dup))&&relevantDir(p)){if(project([p.lat,p.lon],r.pts,r.cum).dist<120)nR++;}}
+      const extra=main&&k!=="principal"?` · ${r.dist>main.dist?"+":""}${((r.dist-main.dist)/1000).toFixed(0)} km, ${r.dur>main.dur?"+":"−"}${fmtDur(Math.abs(r.dur-main.dur))}`:"";
+      h+=`<div class="desvio" onclick="selRoute('${k}')"><div class="sw" style="background:${r.color}"></div>
+        <div class="grow"><b>${r.name}</b>${k===S.active?' <span class="pill" style="color:var(--acc)">activa</span>':""}<br>
+        <span class="small">${(r.dist/1000).toFixed(0)} km · ${fmtDur(r.dur)}${extra} · ${nR} controles conocidos</span><br>
+        <span class="small mut">${r.desc||DESVIOS[0].desc}</span><br><span class="small" onclick="event.stopPropagation()">Abrir en ${navLinks(r,k)}</span></div></div>`;}
+    h+=`</div><div class="small mut">Los tiempos son de OSRM, sin tránsito. Los links de Google Maps incluyen los puntos de paso del desvío.</div>`;
+  }
+  el.innerHTML=h;
+}
+function selRoute(k){S.active=k;hintAct=null;saveState();renderAll();document.querySelector('nav button[data-v="mapa"]').click();MapView.fit();}
+
+const WCODE={0:"☀️ despejado",1:"🌤 mayormente despejado",2:"⛅ parcialmente nublado",3:"☁️ nublado",45:"🌫 niebla",48:"🌫 niebla",51:"🌦 llovizna débil",53:"🌦 llovizna",55:"🌧 llovizna intensa",61:"🌧 lluvia débil",63:"🌧 lluvia",65:"🌧 lluvia fuerte",80:"🌦 chaparrones",81:"🌧 chaparrones",82:"⛈ chaparrones fuertes",95:"⛈ tormenta",96:"⛈ tormenta",99:"⛈ tormenta"};
+async function renderDatos(){
+  const el=document.getElementById("v-datos");
+  const ti=await Store.get("tilesInfo_"+TILE_VER).catch(()=>null);
+  const upd=S.updatedAt?new Date(S.updatedAt).toLocaleString("es-AR"):"nunca";
+  let h=`<div class="card"><h2>Actualizar (con wifi)</h2>
+   <div class="small">Calcula la ruta y todos los desvíos, busca radares, peajes y estaciones en OpenStreetMap, baja el pronóstico y guarda el mapa del recorrido para usarlo <b>sin conexión</b>.</div>
+   <label class="chk small"><input type="checkbox" id="hiDetail"> Más detalle de calles en la ruta activa (más MB)</label>
+   <div class="row" style="margin-top:6px"><button class="pri grow" id="bUpd" ${S.online?"":"disabled"}>Actualizar todo</button><button id="bUpdLite" ${S.online?"":"disabled"}>Solo datos</button></div>
+   <div class="bar" style="margin-top:8px"><i id="tileBar"></i></div>
+   <div class="small mut" id="updLog" style="margin-top:6px">${S.online?"Conectado.":"Sin conexión: se muestran los últimos datos guardados."}</div>
+   <div class="small" style="margin-top:8px">Última actualización: <b>${upd}</b><br>Mapa guardado: <b>${ti?ti.count+" mosaicos":"no"}</b>${Store.persistent?"":" · <span style='color:var(--warn)'>este navegador no permite guardar datos de forma permanente</span>"}</div>
+   ${S.errors&&S.errors.length?`<div class="small" style="color:var(--warn);margin-top:6px">Avisos: ${S.errors.join(" · ")}</div>`:""}
+  </div>`;
+  h+=`<div class="card"><h2>Viaje</h2>
+   <div class="small">Origen: <b>${PLACES.origen.name}</b><br>Destino: <b>${PLACES.destino.name}</b></div>
+   <div class="row" style="margin-top:8px"><button class="pri grow" onclick="startTrip();document.querySelector('nav button[data-v=mapa]').click()">▶ Iniciar viaje (GPS + alertas)</button></div>
+   <div class="small mut" style="margin-top:6px">Mantiene la pantalla encendida, avisa con sonido y vibración a 2 km y a 500 m de cada control, y muestra la máxima del tramo. Configurá Maps/Waze antes de salir y no manipules el celular manejando.</div>
+   <details style="margin-top:8px"><summary class="small">Cambiar origen</summary>
+    <div class="small" style="margin:6px 0">Coordenadas "lat, lon" (podés copiarlas de Google Maps):</div>
+    <input type="text" id="inOrig" value="${PLACES.origen.lat}, ${PLACES.origen.lon}">
+    <div class="row" style="margin-top:6px"><button class="grow" onclick="setOrigin()">Guardar origen</button><button onclick="originFromGps()">Usar mi ubicación</button></div>
+    <div class="small mut">Después tocá Actualizar todo.</div></details>
+  </div>`;
+  if(S.weather){h+=`<div class="card"><h2>Pronóstico</h2><table><tr><th></th>${S.weather.locs[0].daily.time.map(t=>`<th>${new Date(t+"T12:00").toLocaleDateString("es-AR",{weekday:"short",day:"numeric"})}</th>`).join("")}</tr>`;
+    for(const l of S.weather.locs){h+=`<tr><td><b>${l.name}</b></td>${l.daily.time.map((t,i)=>`<td>${WCODE[l.daily.weather_code[i]]||""}<br>${Math.round(l.daily.temperature_2m_min[i])}°/${Math.round(l.daily.temperature_2m_max[i])}° · 💧${l.daily.precipitation_probability_max[i]??"–"}%<br>ráfagas ${Math.round(l.daily.wind_gusts_10m_max[i])} km/h</td>`).join("")}</tr>`;}
+    h+=`</table><div class="small mut" style="margin-top:4px">Open-Meteo · bajado ${new Date(S.weather.at).toLocaleString("es-AR")}</div></div>`;}
+  const nOsm=S.osm?S.osm.cams.length:0;
+  h+=`<div class="card"><h2>Qué muestra el mapa y de dónde sale</h2>
+   <table>
+   <tr><td><span class="sign" style="width:26px;height:26px;border-width:3px;font-size:10px">80</span></td><td><b>Radar fijo oficial</b> (${DATA.fixed.length} en Ruta 2). Km y sentido del mapa provincial de radares; la máxima sale del registro de InfraccionesBA. La posición se calcula a partir del km (±1 km).</td></tr>
+   <tr><td><span class="dot" style="background:#ff8a3d;width:14px;height:14px"></span></td><td><b>Cámaras de OpenStreetMap</b> (${nOsm} sobre tus rutas). Cargadas por la comunidad; pueden estar desactualizadas.</td></tr>
+   <tr><td><span style="display:inline-block;width:22px;height:8px;background:var(--warn)"></span></td><td><b>Zona de control móvil autorizada</b> (Gral. Pueyrredón km 384–399).</td></tr>
+   <tr><td><span class="dot" style="background:#5b6cff;border-radius:2px;width:14px;height:14px"></span></td><td>Peajes</td></tr>
+   <tr><td><span class="dot" style="background:#2fbf71"></span></td><td>Estaciones de servicio (visibles con zoom)</td></tr>
+   <tr><td>⚠️</td><td>Puntos de precaución de la Ruta 2</td></tr></table>
+   <div class="small mut" style="margin-top:8px">Las alertas de usuarios de Waze no tienen fuente pública: para eso abrí la ruta en Waze desde <b>Desvíos</b>. El registro oficial incluye además un <b>tiempo de referencia</b> entre progresivas (pestaña Tramos), pero no hay confirmación oficial de que se multe por velocidad promedio.</div>
+   <div class="small" style="margin-top:8px">Fuentes: <a href="https://infraccionesba.gba.gob.ar/equiposDeConstatacion" target="_blank">InfraccionesBA – Radares</a> · <a href="https://lomasnoticias.com.ar/nota/2023/conoce-donde-se-encuentran-los-radares-de-las-rutas-hacia-la-costa-atlantica/" target="_blank">Mapa provincial (Lomas Noticias)</a> · <a href="https://www.lanacion.com.ar/autos/ruta-2-donde-estan-los-radares-de-velocidad-nid27122024/" target="_blank">La Nación</a> · <a href="https://www.infozona.com.ar/atencion-conductores-nuevos-radares-en-ruta-2-y-ruta-11/" target="_blank">Infozona (feb 2026)</a> · OpenStreetMap · OSRM · Open-Meteo<br>Consultá o hacé un descargo de multas en <a href="https://infraccionesba.gba.gob.ar/consulta-infraccion" target="_blank">infraccionesba.gba.gob.ar</a></div>
+   <div class="small mut" style="margin-top:6px">Datos embebidos: versión ${DATA.version}.</div>
+   <div class="row" style="margin-top:8px"><button onclick="clearMap()">Borrar mapa guardado</button></div></div>`;
+  el.innerHTML=h;
+  document.getElementById("bUpd").onclick=()=>runUpdate(true);
+  document.getElementById("bUpdLite").onclick=()=>runUpdate(false);
+}
+let updating=false;
+async function runUpdate(tiles){ if(updating)return; updating=true; document.getElementById("bUpd").disabled=true;document.getElementById("bUpdLite").disabled=true;
+  try{await updateAll(tiles);}catch(e){const l=document.getElementById("updLog");if(l)l.textContent="Error: "+e.message;}
+  updating=false; renderDatos(); }
+function setOrigin(){const v=document.getElementById("inOrig").value.split(",").map(s=>parseFloat(s));if(v.length===2&&!isNaN(v[0])&&!isNaN(v[1])){PLACES.origen={name:"Origen personalizado ("+v[0].toFixed(4)+", "+v[1].toFixed(4)+")",lat:v[0],lon:v[1]};Store.set("origen",PLACES.origen);renderDatos();toast("Origen guardado. Tocá Actualizar todo.");}else toast("Formato inválido. Ejemplo: -34.95, -57.94");}
+async function originFromGps(){const st=await gpsStatus();if(st!=="granted"&&st!=="prompt"){gpsHelp(st);return;}navigator.geolocation.getCurrentPosition(p=>{PLACES.origen={name:"Mi ubicación ("+p.coords.latitude.toFixed(4)+", "+p.coords.longitude.toFixed(4)+")",lat:p.coords.latitude,lon:p.coords.longitude};Store.set("origen",PLACES.origen);renderDatos();},e=>gpsHelp(e.code===1?"denied":e.code===2?"unavailable":"timeout"),{enableHighAccuracy:true,timeout:30000});}
+async function clearMap(){await Store.clearTiles();await Store.set("tilesInfo_"+TILE_VER,null);renderDatos();toast("Mapa borrado.");}
+
+function renderAll(){ renderEmpty(); MapView.draw(); renderTira(); renderDesvios(); renderDatos(); renderDrive(); }
+
+/* =====================================================================
+   INICIO
+   ===================================================================== */
+function setNet(){S.online=navigator.onLine;const n=document.getElementById("net");n.textContent=S.online?"online":"offline";n.className=S.online?"on":"";if(document.getElementById("v-datos").classList.contains("on"))renderDatos();}
+window.addEventListener("online",setNet);window.addEventListener("offline",setNet);
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b));document.querySelectorAll(".view").forEach(v=>v.classList.toggle("on",v.id==="v-"+b.dataset.v));if(b.dataset.v==="mapa")MapView.resize();if(b.dataset.v==="tira")renderTira();if(b.dataset.v==="datos")renderDatos();});
+document.querySelectorAll("#dirSeg button").forEach(b=>b.onclick=()=>{S.dir=b.dataset.d;document.querySelectorAll("#dirSeg button").forEach(x=>x.classList.toggle("on",x===b));S.alerted.clear();saveState();renderAll();});
+document.getElementById("bZin").onclick=()=>MapView.zoomAt(1);
+document.getElementById("bZout").onclick=()=>MapView.zoomAt(-1);
+document.getElementById("bFit").onclick=()=>{S.follow=false;updFollowBtn();MapView.fit();};
+document.getElementById("bGps").onclick=()=>{ if(S.watchId==null){startTrip();} else {S.follow=!S.follow;updFollowBtn();if(S.follow&&S.gps)MapView.setView(S.gps.lat,S.gps.lon,Math.max(MapView.z,12.5));} };
+
+(async()=>{
+  await Store.open();
+  try{const tv=await Store.get("tileVer"); if(tv!==TILE_VER){await Store.clearTiles(); await Store.set("tileVer",TILE_VER);}}catch(e){}
+  try{const o=await Store.get("origen");if(o)PLACES.origen=o;}catch(e){}
+  try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();}catch(e){}
+  await loadState();
+  document.querySelectorAll("#dirSeg button").forEach(x=>x.classList.toggle("on",x.dataset.d===S.dir));
+  setNet(); MapView.resize(); renderAll(); MapView.fit();
+  refreshGpsChip(); { const st=await gpsStatus(); if(st!=="granted"){ try{ if(!sessionStorage.getItem("gpsAsked")){sessionStorage.setItem("gpsAsked","1"); gpsHelp(st);} }catch(e){ gpsHelp(st);} } }
+  if("serviceWorker" in navigator && location.protocol==="https:"){try{navigator.serviceWorker.register("sw.js");}catch(e){}}
+})();
+</script>
+</body>
+</html>
